@@ -20,8 +20,9 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { toast, useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import Link from "next/link";
 
 const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
@@ -58,27 +59,73 @@ const contractABI = [
 
 const contractAddress = "0x1234567890123456789012345678901234567890";
 
+const SHIELD_TESTNET_CHAIN_ID = "0xa5b5a";
+
 export default function PizzaToppingsVoting() {
   const [account, setAccount] = useState("");
+  const [balance, setBalance] = useState("0");
   const [selectedToppings, setSelectedToppings] = useState<number[]>([]);
   const [votingResults, setVotingResults] = useState<
-    { name: string; votes: number }[]
-  >(pizzaToppings.map((topping) => ({ name: topping.name, votes: 0 })));
+    {
+      name: string;
+      votes: number;
+    }[]
+  >(() => pizzaToppings.map((topping) => ({ name: topping.name, votes: 0 })));
   const [contract, setContract] = useState<ethers.Contract>();
+  const [currentChainId, setCurrentChainId] = useState<string>();
   const { toast } = useToast();
 
   useEffect(() => {
     connectWallet();
+
+    if (window.ethereum) {
+      window.ethereum.on("accountsChanged", handleAccountsChanged);
+      window.ethereum.on("chainChanged", handleChainChanged);
+    }
+
+    return () => {
+      if (window.ethereum) {
+        window.ethereum.removeListener(
+          "accountsChanged",
+          handleAccountsChanged
+        );
+        window.ethereum.removeListener("chainChanged", handleChainChanged);
+      }
+    };
   }, []);
+
+  const handleAccountsChanged = (accounts: string[]) => {
+    if (accounts.length > 0) {
+      setAccount(ethers.getAddress(accounts[0]));
+      updateBalance(accounts[0]);
+    } else {
+      setAccount("");
+      setBalance("0");
+    }
+  };
+
+  const handleChainChanged = (chainId: string) => {
+    setCurrentChainId(chainId);
+    connectWallet();
+  };
 
   const connectWallet = async () => {
     if (typeof window.ethereum !== "undefined") {
       try {
-        await window.ethereum.request({ method: "eth_requestAccounts" });
+        const accounts = await window.ethereum.request({
+          method: "eth_requestAccounts",
+        });
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
         const address = await signer.getAddress();
         setAccount(address);
+
+        updateBalance(address);
+
+        const chainId = await window.ethereum.request({
+          method: "eth_chainId",
+        });
+        setCurrentChainId(chainId);
 
         const contractInstance = new ethers.Contract(
           contractAddress,
@@ -102,6 +149,71 @@ export default function PizzaToppingsVoting() {
         description: "Please install MetaMask or another Ethereum wallet.",
         variant: "destructive",
       });
+    }
+  };
+
+  const disconnectWallet = async () => {
+    if (typeof window.ethereum !== "undefined") {
+      try {
+        await window.ethereum.request({
+          method: "eth_requestAccounts",
+          params: [{ eth_accounts: {} }],
+        });
+        setAccount("");
+        setBalance("0");
+        setContract(undefined);
+        setVotingResults(
+          pizzaToppings.map((topping) => ({ name: topping.name, votes: 0 }))
+        );
+      } catch (error) {
+        console.error("Failed to disconnect wallet:", error);
+        toast({
+          title: "Error",
+          description: "Failed to disconnect wallet. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const updateBalance = async (address: string) => {
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const balance = await provider.getBalance(address);
+    setBalance(ethers.formatEther(balance));
+  };
+
+  const switchToShieldTestnet = async () => {
+    if (typeof window.ethereum !== "undefined") {
+      try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: SHIELD_TESTNET_CHAIN_ID }],
+        });
+      } catch (switchError) {
+        if ((switchError as any).code === 4902) {
+          try {
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [
+                {
+                  chainId: SHIELD_TESTNET_CHAIN_ID,
+                  chainName: "Gateway Shield Testnet",
+                  nativeCurrency: {
+                    name: "Gateway",
+                    symbol: "OWN",
+                    decimals: 18,
+                  },
+                  rpcUrls: ["https://rpc.shield-testnet.com"],
+                  blockExplorerUrls: ["https://explorer.shield-testnet.com"],
+                },
+              ],
+            });
+          } catch (addError) {
+            console.error("Failed to add Shield Testnet:", addError);
+          }
+        }
+        console.error("Failed to switch to Shield Testnet:", switchError);
+      }
     }
   };
 
@@ -195,14 +307,44 @@ export default function PizzaToppingsVoting() {
                 Connected Account
               </p>
               <p className="font-mono">{account || "Not connected"}</p>
+              <p className="text-sm text-[var(--text)] opacity-70 mt-2">
+                Balance
+              </p>
+              <p>{parseFloat(balance).toFixed(2)} $OWN</p>
             </div>
-            <Button
-              onClick={connectWallet}
-              variant="outline"
-              className="border-[var(--primary)] text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white"
-            >
-              {account ? "Switch Wallet" : "Connect Wallet"}
-            </Button>
+            <div className="space-y-2">
+              <Button
+                onClick={account ? disconnectWallet : connectWallet}
+                variant="outline"
+                className="w-full border-[var(--primary)] text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white"
+              >
+                {account ? "Disconnect Wallet" : "Connect Wallet"}
+              </Button>
+              {currentChainId !== SHIELD_TESTNET_CHAIN_ID && (
+                <Button
+                  onClick={switchToShieldTestnet}
+                  variant="outline"
+                  className="w-full border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white"
+                >
+                  Change to Shield Testnet
+                </Button>
+              )}
+              {currentChainId === SHIELD_TESTNET_CHAIN_ID &&
+                parseFloat(balance) == 0 && (
+                  <Link
+                    href="https://faucet.gateway.tech"
+                    target="_blank"
+                    className="block"
+                  >
+                    <Button
+                      variant="outline"
+                      className="w-full border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white"
+                    >
+                      Get Some Testnet Tokens
+                    </Button>
+                  </Link>
+                )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -224,11 +366,17 @@ export default function PizzaToppingsVoting() {
           </div>
 
           <Button
+            disabled={currentChainId !== SHIELD_TESTNET_CHAIN_ID}
             onClick={submitVote}
             className="w-full bg-[var(--accent)] text-white hover:bg-[var(--primary)]"
           >
             Submit Your Vote
           </Button>
+          {currentChainId !== SHIELD_TESTNET_CHAIN_ID && (
+            <Label className="text-sm text-[var(--text)] opacity-70">
+              Please connect to Shield Testnet to proceed
+            </Label>
+          )}
 
           <div className="space-y-4">
             <Label className="text-lg font-semibold">
