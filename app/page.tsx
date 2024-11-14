@@ -30,6 +30,7 @@ import {
   contractAddress,
   publicKey,
 } from "./helpers";
+import { decryptVotes } from "./actions";
 
 const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
@@ -46,6 +47,7 @@ export default function PizzaToppingsVoting() {
   >(() => pizzaToppings.map((topping) => ({ name: topping.name, votes: 0 })));
   const [contract, setContract] = useState<ethers.Contract>();
   const [currentChainId, setCurrentChainId] = useState<string>();
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -196,6 +198,8 @@ export default function PizzaToppingsVoting() {
   };
 
   const submitVote = async () => {
+    setLoading(true);
+
     if (selectedToppings.length === 0) {
       toast({
         title: "No toppings selected",
@@ -250,14 +254,15 @@ export default function PizzaToppingsVoting() {
         variant: "destructive",
       });
     }
+
+    setLoading(false);
   };
 
   const updateVotingResults = async () => {
     try {
-      const response = await fetch("/api/decrypt");
-      const data = await response.json();
+      const data = await decryptVotes();
       setVotingResults(
-        data.results.map((result: any) => ({
+        data.map((result: any) => ({
           name:
             pizzaToppings.find((t) => t.id === result.toppingId)?.name ||
             "Others",
@@ -360,12 +365,13 @@ export default function PizzaToppingsVoting() {
             disabled={
               currentChainId !== SHIELD_TESTNET_CHAIN_ID ||
               selectedToppings.length === 0 ||
-              hasVoted
+              hasVoted ||
+              loading
             }
             onClick={submitVote}
             className="w-full bg-[var(--primary)] text-[var(--white)] hover:bg-[var(--secondary)] hover:text-[var(--primary)]"
           >
-            Submit Your Vote
+            {loading ? "Submitting Vote..." : "Submit Vote"}
           </Button>
           {currentChainId !== SHIELD_TESTNET_CHAIN_ID && (
             <Label className="text-sm text-[var(--text)] opacity-70">

@@ -1,9 +1,10 @@
-import { ethers } from "ethers";
-import { contractABI, pizzaToppings } from "@/app/helpers";
-import { NextResponse } from "next/server";
-import { PrivateKey, PublicKey } from "paillier-bigint";
+"use server";
 
-export async function GET() {
+import { ethers } from "ethers";
+import { PrivateKey, PublicKey } from "paillier-bigint";
+import { contractABI, pizzaToppings } from "./helpers";
+
+export async function decryptVotes() {
   // Load public key components
   const publicKeyN = BigInt("0x" + process.env.NEXT_PUBLIC_PUBLIC_KEY_N);
   const publicKeyG = BigInt("0x" + process.env.NEXT_PUBLIC_PUBLIC_KEY_G);
@@ -65,9 +66,5 @@ export async function GET() {
     };
   });
 
-  console.log("Decrypted votes", decryptedVotes);
-
-  return NextResponse.json({
-    results: decryptedVotes,
-  });
+  return decryptedVotes;
 }
