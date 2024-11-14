@@ -128,7 +128,10 @@ export default function PizzaToppingsVoting() {
         setBalance("0");
         setContract(undefined);
         setVotingResults(
-          pizzaToppings.map((topping) => ({ name: topping.name, votes: 0 }))
+          pizzaToppings.map((topping) => ({
+            name: topping.name,
+            votes: undefined,
+          }))
         );
       } catch (error) {
         console.error("Failed to disconnect wallet:", error);
@@ -393,7 +396,11 @@ export default function PizzaToppingsVoting() {
             <ResponsiveContainer width="100%" height={400}>
               <BarChart
                 data={votingResults
-                  .sort((a, b) => b.votes - a.votes)
+                  .sort(
+                    (a, b) =>
+                      Number(BigInt(b.votes || "0")) -
+                      Number(BigInt(a.votes || "0"))
+                  )
                   .slice(0, 10)}
               >
                 <XAxis
