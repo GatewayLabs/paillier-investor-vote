@@ -62,7 +62,7 @@ export async function decryptVotes() {
     const decryptedValue = privateKey.decrypt(vote.encryptedValue);
     return {
       toppingId: vote.toppingId,
-      votes: Number(decryptedValue),
+      votes: decryptedValue.toString(),
     };
   });
 

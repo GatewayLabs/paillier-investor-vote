@@ -42,9 +42,11 @@ export default function PizzaToppingsVoting() {
   const [votingResults, setVotingResults] = useState<
     {
       name: string;
-      votes: number;
+      votes?: string;
     }[]
-  >(() => pizzaToppings.map((topping) => ({ name: topping.name, votes: 0 })));
+  >(() =>
+    pizzaToppings.map((topping) => ({ name: topping.name, votes: undefined }))
+  );
   const [contract, setContract] = useState<ethers.Contract>();
   const [currentChainId, setCurrentChainId] = useState<string>();
   const [loading, setLoading] = useState(false);
