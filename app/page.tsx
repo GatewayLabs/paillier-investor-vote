@@ -23,39 +23,10 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import Link from "next/link";
+import { generateRandomKeys, PublicKey, PrivateKey } from "paillier-bigint";
+import { pizzaToppings, contractABI } from "./helpers";
 
 const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ["latin"] });
-
-const pizzaToppings = [
-  { id: 0, name: "Pepperoni" },
-  { id: 1, name: "Italian sausage" },
-  { id: 2, name: "Mushrooms" },
-  { id: 3, name: "Green peppers" },
-  { id: 4, name: "Onions" },
-  { id: 5, name: "Black olives" },
-  { id: 6, name: "Spinach" },
-  { id: 7, name: "Tomatoes" },
-  { id: 8, name: "Artichoke hearts" },
-  { id: 9, name: "Jalapeños" },
-  { id: 10, name: "Eggplant" },
-  { id: 11, name: "Broccoli" },
-  { id: 12, name: "Sun-dried tomatoes" },
-  { id: 13, name: "Pineapple" },
-  { id: 14, name: "Buffalo chicken" },
-  { id: 15, name: "BBQ sauce" },
-  { id: 16, name: "Goat cheese" },
-  { id: 17, name: "Fresh basil" },
-  { id: 18, name: "Caramelized onions" },
-  { id: 19, name: "Roasted red peppers" },
-  { id: 20, name: "Feta cheese" },
-  { id: 21, name: "Ricotta" },
-  { id: 22, name: "Hot honey" },
-];
-
-const contractABI = [
-  "function vote(uint256[] toppingIds) public",
-  "function getVotes() public view returns (uint256[])",
-];
 
 const contractAddress = "0x1234567890123456789012345678901234567890";
 
@@ -73,10 +44,14 @@ export default function PizzaToppingsVoting() {
   >(() => pizzaToppings.map((topping) => ({ name: topping.name, votes: 0 })));
   const [contract, setContract] = useState<ethers.Contract>();
   const [currentChainId, setCurrentChainId] = useState<string>();
+  const [publicKey, setPublicKey] = useState<PublicKey>(
+    new PublicKey(BigInt(0), BigInt(0))
+  );
   const { toast } = useToast();
 
   useEffect(() => {
     connectWallet();
+    updateVotingResults();
 
     if (window.ethereum) {
       window.ethereum.on("accountsChanged", handleAccountsChanged);
@@ -225,6 +200,10 @@ export default function PizzaToppingsVoting() {
     );
   };
 
+  const encryptVote = (voteValue: bigint) => {
+    return publicKey.encrypt(voteValue);
+  };
+
   const submitVote = async () => {
     if (selectedToppings.length === 0) {
       toast({
@@ -237,7 +216,18 @@ export default function PizzaToppingsVoting() {
 
     if (contract) {
       try {
-        const tx = await contract.vote(selectedToppings);
+        const encryptedVotes = selectedToppings.map((toppingId) => {
+          const encryptedVote = encryptVote(BigInt(toppingId));
+          return {
+            toppingId,
+            encryptedValue: "0x" + encryptedVote.toString(16),
+          };
+        });
+
+        const toppingIds = encryptedVotes.map((v) => v.toppingId);
+        const encryptedVoteValues = encryptedVotes.map((v) => v.encryptedValue);
+
+        const tx = await contract.vote(encryptedVoteValues, toppingIds);
         await tx.wait();
         toast({
           title: "Vote Submitted",
@@ -263,36 +253,37 @@ export default function PizzaToppingsVoting() {
   };
 
   const updateVotingResults = async () => {
-    if (contract) {
-      try {
-        const votes = await contract.getVotes();
-        setVotingResults(
-          pizzaToppings.map((topping, index) => ({
-            name: topping.name,
-            votes: votes[index].toNumber(),
-          }))
-        );
-      } catch (error) {
-        console.error("Failed to get voting results:", error);
-      }
+    try {
+      const response = await fetch("/api/getVotingResults");
+      const data = await response.json();
+      setVotingResults(
+        data.results.map((result: any) => ({
+          name:
+            pizzaToppings.find((t) => t.id === result.toppingId)?.name ||
+            "Others",
+          votes: result.votes,
+        }))
+      );
+    } catch (error) {
+      console.error("Failed to get voting results:", error);
     }
   };
 
   return (
     <div
-      className={`min-h-screen bg-[#FFF5E6] text-[#4A3200] p-8 ${plusJakartaSans.className}`}
+      className={`min-h-screen bg-[var(--tertiary)] text-[var(--dark)] p-8 ${plusJakartaSans.className}`}
     >
       <style jsx global>{`
         :root {
-          --primary: #ff6b35;
-          --secondary: #ffd700;
-          --background: #fff5e6;
-          --text: #4a3200;
-          --accent: #ff9f1c;
+          --primary: #771ac9;
+          --secondary: #e6d5fa;
+          --tertiary: #f6f4fa;
+          --dark: #212121;
+          --white: #fff;
         }
       `}</style>
-      <Card className="max-w-4xl mx-auto bg-[var(--background)] text-[var(--text)] shadow-lg border-2 border-[var(--accent)]">
-        <CardHeader className="bg-[var(--primary)] text-white">
+      <Card className="max-w-4xl mx-auto bg-[var(--white)] text-[var(--dark)] shadow-lg">
+        <CardHeader className="bg-[var(--primary)] text-white rounded-t-lg">
           <CardTitle className="text-3xl font-bold">
             What Are Your Favorite Pizza Toppings?
           </CardTitle>
@@ -312,19 +303,19 @@ export default function PizzaToppingsVoting() {
               </p>
               <p>{parseFloat(balance).toFixed(2)} $OWN</p>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 flex flex-col">
               <Button
                 onClick={account ? disconnectWallet : connectWallet}
                 variant="outline"
-                className="w-full border-[var(--primary)] text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white"
+                className="border-[var(--primary)] text-[var(--primary)] hover:bg-[var(--primary)] hover:text-[var(--white)]"
               >
                 {account ? "Disconnect Wallet" : "Connect Wallet"}
               </Button>
               {currentChainId !== SHIELD_TESTNET_CHAIN_ID && (
                 <Button
                   onClick={switchToShieldTestnet}
-                  variant="outline"
-                  className="w-full border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white"
+                  variant="secondary"
+                  className="bg-[var(--secondary)] text-[var(--primary)] hover:bg-[var(--primary)] hover:text-[var(--white)]"
                 >
                   Change to Shield Testnet
                 </Button>
@@ -337,8 +328,8 @@ export default function PizzaToppingsVoting() {
                     className="block"
                   >
                     <Button
-                      variant="outline"
-                      className="w-full border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white"
+                      variant="secondary"
+                      className="bg-[var(--secondary)] text-[var(--primary)] hover:bg-[var(--primary)] hover:text-[var(--white)]"
                     >
                       Get Some Testnet Tokens
                     </Button>
@@ -351,10 +342,10 @@ export default function PizzaToppingsVoting() {
             {pizzaToppings.map((topping) => (
               <div
                 key={topping.id}
-                className={`flex items-center justify-center p-4 rounded-md border-2 cursor-pointer transition-all duration-200 ${
+                className={`flex items-center justify-center p-4 rounded-md border-2 cursor-pointer transition-all duration-200 hover:bg-[var(--secondary)] ${
                   selectedToppings.includes(topping.id)
-                    ? "border-[var(--primary)] bg-[var(--primary)] text-white"
-                    : "border-[var(--accent)] hover:border-[var(--primary)]"
+                    ? "border-[var(--primary)]"
+                    : "border-[var(--secondary)]"
                 }`}
                 onClick={() => handleToppingToggle(topping.id)}
               >
@@ -366,9 +357,12 @@ export default function PizzaToppingsVoting() {
           </div>
 
           <Button
-            disabled={currentChainId !== SHIELD_TESTNET_CHAIN_ID}
+            disabled={
+              currentChainId !== SHIELD_TESTNET_CHAIN_ID ||
+              selectedToppings.length === 0
+            }
             onClick={submitVote}
-            className="w-full bg-[var(--accent)] text-white hover:bg-[var(--primary)]"
+            className="w-full bg-[var(--primary)] text-[var(--white)] hover:bg-[var(--secondary)] hover:text-[var(--primary)]"
           >
             Submit Your Vote
           </Button>
@@ -403,7 +397,7 @@ export default function PizzaToppingsVoting() {
           </div>
         </CardContent>
         <CardFooter className="text-sm text-[var(--text)] opacity-70">
-          Powered by Pizza Lovers Everywhere
+          Powered by Gateway Protocol
         </CardFooter>
       </Card>
     </div>
