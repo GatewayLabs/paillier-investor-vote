@@ -18,6 +18,7 @@
     "ethers": "^6.13.4",
     "lucide-react": "^0.456.0",
     "next": "14.2.16",
+    "paillier-bigint": "^3.4.3",
     "react": "^18",
     "react-dom": "^18",
     "recharts": "^2.13.3",
