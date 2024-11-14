@@ -1,3 +1,5 @@
+import { PublicKey } from "paillier-bigint";
+
 export const pizzaToppings = [
   { id: 0, name: "Pepperoni" },
   { id: 1, name: "Italian sausage" },
@@ -28,3 +30,8 @@ export const contractABI = [
   "function vote(bytes[] calldata encryptedVoteValues, uint256[] calldata toppingIds) external",
   "function getVotes() public view returns (uint256[])",
 ];
+
+const publicKeyN = BigInt("0x" + process.env.NEXT_PUBLIC_PUBLIC_KEY_N);
+const publicKeyG = BigInt("0x" + process.env.NEXT_PUBLIC_PUBLIC_KEY_G);
+
+export const publicKey = new PublicKey(publicKeyN, publicKeyG);
