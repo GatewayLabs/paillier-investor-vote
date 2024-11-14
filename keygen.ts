@@ -16,15 +16,9 @@ const keySize = 2048;
     mu: privateKey.mu.toString(16),
   };
 
-  fs.writeFileSync(
-    ".env.public",
-    `PUBLIC_KEY_N=${publicKeyData.n}\nPUBLIC_KEY_G=${publicKeyData.g}`
-  );
+  fs.writeFileSync("publicKey.json", JSON.stringify(publicKeyData));
 
-  fs.writeFileSync(
-    ".env.private",
-    `PRIVATE_KEY_LAMBDA=${privateKeyData.lambda}\nPRIVATE_KEY_MU=${privateKeyData.mu}`
-  );
+  fs.writeFileSync("privateKey.json", JSON.stringify(privateKeyData));
 
   console.log("Paillier keypair generated successfully.");
 })();
