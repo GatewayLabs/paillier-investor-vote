@@ -23,18 +23,20 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import Link from "next/link";
-import { generateRandomKeys, PublicKey, PrivateKey } from "paillier-bigint";
-import { pizzaToppings, contractABI } from "./helpers";
+import {
+  pizzaToppings,
+  contractABI,
+  SHIELD_TESTNET_CHAIN_ID,
+  contractAddress,
+  publicKey,
+} from "./helpers";
 
 const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ["latin"] });
-
-const contractAddress = "0x1234567890123456789012345678901234567890";
-
-const SHIELD_TESTNET_CHAIN_ID = "0xa5b5a";
 
 export default function PizzaToppingsVoting() {
   const [account, setAccount] = useState("");
   const [balance, setBalance] = useState("0");
+  const [hasVoted, setHasVoted] = useState(false);
   const [selectedToppings, setSelectedToppings] = useState<number[]>([]);
   const [votingResults, setVotingResults] = useState<
     {
@@ -44,40 +46,23 @@ export default function PizzaToppingsVoting() {
   >(() => pizzaToppings.map((topping) => ({ name: topping.name, votes: 0 })));
   const [contract, setContract] = useState<ethers.Contract>();
   const [currentChainId, setCurrentChainId] = useState<string>();
-  const [publicKey, setPublicKey] = useState<PublicKey>(
-    new PublicKey(BigInt(0), BigInt(0))
-  );
   const { toast } = useToast();
 
   useEffect(() => {
     connectWallet();
-    updateVotingResults();
 
     if (window.ethereum) {
-      window.ethereum.on("accountsChanged", handleAccountsChanged);
+      window.ethereum.on("accountsChanged", connectWallet);
       window.ethereum.on("chainChanged", handleChainChanged);
     }
 
     return () => {
       if (window.ethereum) {
-        window.ethereum.removeListener(
-          "accountsChanged",
-          handleAccountsChanged
-        );
+        window.ethereum.removeListener("accountsChanged", connectWallet);
         window.ethereum.removeListener("chainChanged", handleChainChanged);
       }
     };
   }, []);
-
-  const handleAccountsChanged = (accounts: string[]) => {
-    if (accounts.length > 0) {
-      setAccount(ethers.getAddress(accounts[0]));
-      updateBalance(accounts[0]);
-    } else {
-      setAccount("");
-      setBalance("0");
-    }
-  };
 
   const handleChainChanged = (chainId: string) => {
     setCurrentChainId(chainId);
@@ -87,7 +72,7 @@ export default function PizzaToppingsVoting() {
   const connectWallet = async () => {
     if (typeof window.ethereum !== "undefined") {
       try {
-        const accounts = await window.ethereum.request({
+        await window.ethereum.request({
           method: "eth_requestAccounts",
         });
         const provider = new ethers.BrowserProvider(window.ethereum);
@@ -110,6 +95,7 @@ export default function PizzaToppingsVoting() {
         setContract(contractInstance);
 
         updateVotingResults();
+        checkIfVoted(contractInstance, address);
       } catch (error) {
         console.error("Failed to connect wallet:", error);
         toast({
@@ -178,8 +164,12 @@ export default function PizzaToppingsVoting() {
                     symbol: "OWN",
                     decimals: 18,
                   },
-                  rpcUrls: ["https://rpc.shield-testnet.com"],
-                  blockExplorerUrls: ["https://explorer.shield-testnet.com"],
+                  rpcUrls: [
+                    "https://gateway-shield-testnet.rpc.caldera.xyz/http",
+                  ],
+                  blockExplorerUrls: [
+                    "https://gateway-shield-testnet.explorer.caldera.xyz",
+                  ],
                 },
               ],
             });
@@ -200,8 +190,9 @@ export default function PizzaToppingsVoting() {
     );
   };
 
-  const encryptVote = (voteValue: bigint) => {
-    return publicKey.encrypt(voteValue);
+  const checkIfVoted = async (contract: ethers.Contract, account: string) => {
+    const vote = await contract.hasVoted(ethers.getAddress(account));
+    setHasVoted(vote);
   };
 
   const submitVote = async () => {
@@ -216,25 +207,34 @@ export default function PizzaToppingsVoting() {
 
     if (contract) {
       try {
-        const encryptedVotes = selectedToppings.map((toppingId) => {
-          const encryptedVote = encryptVote(BigInt(toppingId));
-          return {
-            toppingId,
-            encryptedValue: "0x" + encryptedVote.toString(16),
-          };
-        });
+        const encryptedVoteVector = await Promise.all(
+          pizzaToppings.map(async (topping) => {
+            const voteValue = selectedToppings.includes(topping.id)
+              ? BigInt(1)
+              : BigInt(0);
 
-        const toppingIds = encryptedVotes.map((v) => v.toppingId);
-        const encryptedVoteValues = encryptedVotes.map((v) => v.encryptedValue);
+            const encryptedVote = await publicKey.encrypt(voteValue);
 
-        const tx = await contract.vote(encryptedVoteValues, toppingIds);
+            let hexString = encryptedVote.toString(16);
+            if (hexString.length % 2) {
+              hexString = "0" + hexString; // Ensure even length
+            }
+            const encryptedVoteHex = "0x" + hexString;
+
+            return encryptedVoteHex;
+          })
+        );
+
+        const tx = await contract.vote(encryptedVoteVector);
         await tx.wait();
+
         toast({
           title: "Vote Submitted",
           description: "Your pizza topping preferences have been recorded!",
         });
         updateVotingResults();
         setSelectedToppings([]);
+        setHasVoted(true);
       } catch (error) {
         console.error("Failed to submit vote:", error);
         toast({
@@ -254,7 +254,7 @@ export default function PizzaToppingsVoting() {
 
   const updateVotingResults = async () => {
     try {
-      const response = await fetch("/api/getVotingResults");
+      const response = await fetch("/api/decrypt");
       const data = await response.json();
       setVotingResults(
         data.results.map((result: any) => ({
@@ -359,7 +359,8 @@ export default function PizzaToppingsVoting() {
           <Button
             disabled={
               currentChainId !== SHIELD_TESTNET_CHAIN_ID ||
-              selectedToppings.length === 0
+              selectedToppings.length === 0 ||
+              hasVoted
             }
             onClick={submitVote}
             className="w-full bg-[var(--primary)] text-[var(--white)] hover:bg-[var(--secondary)] hover:text-[var(--primary)]"
@@ -369,6 +370,11 @@ export default function PizzaToppingsVoting() {
           {currentChainId !== SHIELD_TESTNET_CHAIN_ID && (
             <Label className="text-sm text-[var(--text)] opacity-70">
               Please connect to Shield Testnet to proceed
+            </Label>
+          )}
+          {hasVoted && (
+            <Label className="text-sm text-[var(--text)] opacity-70">
+              You have already voted
             </Label>
           )}
 
