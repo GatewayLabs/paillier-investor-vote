@@ -3,21 +3,7 @@ import { contractABI, pizzaToppings } from "@/app/helpers";
 import { NextResponse } from "next/server";
 import { PrivateKey, PublicKey } from "paillier-bigint";
 
-const decryptAggregatedVotes = async (
-  encryptedVotes: { toppingId: number; encryptedValue: string }[],
-  privateKey: PrivateKey
-) => {
-  return encryptedVotes.map((vote) => {
-    const encryptedValueBigInt = BigInt(vote.encryptedValue);
-    const decryptedVote = privateKey.decrypt(encryptedValueBigInt);
-    return {
-      toppingId: vote.toppingId,
-      votes: Number(decryptedVote),
-    };
-  });
-};
-
-export async function POST(request: Request) {
+export async function GET() {
   // Load public key components
   const publicKeyN = BigInt("0x" + process.env.NEXT_PUBLIC_PUBLIC_KEY_N);
   const publicKeyG = BigInt("0x" + process.env.NEXT_PUBLIC_PUBLIC_KEY_G);
@@ -30,24 +16,56 @@ export async function POST(request: Request) {
   const publicKey = new PublicKey(publicKeyN, publicKeyG);
   const privateKey = new PrivateKey(privateKeyLambda, privateKeyMu, publicKey);
 
-  const provider = new ethers.JsonRpcProvider("https://your_rpc_url");
+  const provider = new ethers.JsonRpcProvider(
+    "https://gateway-shield-testnet.rpc.caldera.xyz/http"
+  );
   const contract = new ethers.Contract(
-    process.env.VOTE_CONTRACT_ADDRESS!,
+    process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!,
     contractABI,
     provider
   );
 
-  const encryptedVotes = await Promise.all(
-    pizzaToppings.map(async (topping) => {
-      const encryptedVote = await contract.getEncryptedVote(topping.id);
+  // Fetch encrypted vote sums
+  const encryptedVoteSums = await Promise.all(
+    pizzaToppings.map(async (topping, index) => {
+      const encryptedVoteStruct = await contract.encryptedVoteSums(index);
+      let encryptedValueHex;
+
+      if (typeof encryptedVoteStruct === "string") {
+        // If the contract returns a bytes value directly
+        encryptedValueHex = encryptedVoteStruct;
+      } else if (encryptedVoteStruct && encryptedVoteStruct.value) {
+        // If the contract returns a struct with a 'value' field
+        encryptedValueHex = encryptedVoteStruct.value;
+      } else {
+        console.log(`No encrypted vote sum for topping index ${index}`);
+        encryptedValueHex = "0x0";
+      }
+
+      if (!encryptedValueHex || encryptedValueHex === "0x") {
+        console.log(`No encrypted value at index ${index}, setting to zero`);
+        encryptedValueHex = "0x0";
+      }
+
+      const encryptedValueBigInt = BigInt(encryptedValueHex);
+
       return {
         toppingId: topping.id,
-        encryptedValue: encryptedVote.value,
+        encryptedValue: encryptedValueBigInt,
       };
     })
   );
 
-  const decryptedVotes = decryptAggregatedVotes(encryptedVotes, privateKey);
+  // Decrypt aggregated votes
+  const decryptedVotes = encryptedVoteSums.map((vote) => {
+    const decryptedValue = privateKey.decrypt(vote.encryptedValue);
+    return {
+      toppingId: vote.toppingId,
+      votes: Number(decryptedValue),
+    };
+  });
+
+  console.log("Decrypted votes", decryptedVotes);
 
   return NextResponse.json({
     results: decryptedVotes,
