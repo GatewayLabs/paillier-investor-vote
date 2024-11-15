@@ -24,28 +24,33 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import Link from "next/link";
 import {
-  pizzaToppings,
+  positiveValueRange,
+  negativeValueRange,
   contractABI,
   SHIELD_TESTNET_CHAIN_ID,
   contractAddress,
   publicKey,
 } from "./helpers";
 import { decryptVotes } from "./actions";
+import { RadioGroup } from "@/components/ui/radio-group";
+import { RadioGroupItem } from "@radix-ui/react-radio-group";
 
 const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
-export default function PizzaToppingsVoting() {
+export default function Voting() {
   const [account, setAccount] = useState("");
   const [balance, setBalance] = useState("0");
   const [hasVoted, setHasVoted] = useState(false);
-  const [selectedToppings, setSelectedToppings] = useState<number[]>([]);
+  const [selectedRange, setSelectedRange] = useState<string>();
   const [votingResults, setVotingResults] = useState<
     {
       name: string;
       votes?: string;
     }[]
   >(() =>
-    pizzaToppings.map((topping) => ({ name: topping.name, votes: undefined }))
+    positiveValueRange
+      .concat(negativeValueRange)
+      .map((range) => ({ name: range.name, votes: undefined }))
   );
   const [contract, setContract] = useState<ethers.Contract>();
   const [currentChainId, setCurrentChainId] = useState<string>();
@@ -128,8 +133,8 @@ export default function PizzaToppingsVoting() {
         setBalance("0");
         setContract(undefined);
         setVotingResults(
-          pizzaToppings.map((topping) => ({
-            name: topping.name,
+          positiveValueRange.concat(negativeValueRange).map((range) => ({
+            name: range.name,
             votes: undefined,
           }))
         );
@@ -189,14 +194,6 @@ export default function PizzaToppingsVoting() {
     }
   };
 
-  const handleToppingToggle = (toppingId: number) => {
-    setSelectedToppings((prev) =>
-      prev.includes(toppingId)
-        ? prev.filter((id) => id !== toppingId)
-        : [...prev, toppingId]
-    );
-  };
-
   const checkIfVoted = async (contract: ethers.Contract, account: string) => {
     const vote = await contract.hasVoted(ethers.getAddress(account));
     setHasVoted(vote);
@@ -205,46 +202,27 @@ export default function PizzaToppingsVoting() {
   const submitVote = async () => {
     setLoading(true);
 
-    if (selectedToppings.length === 0) {
-      toast({
-        title: "No toppings selected",
-        description: "Please select at least one topping before voting.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (contract) {
+    if (contract && selectedRange) {
       try {
-        const encryptedVoteVector = await Promise.all(
-          pizzaToppings.map(async (topping) => {
-            const voteValue = selectedToppings.includes(topping.id)
-              ? BigInt(1)
-              : BigInt(0);
+        const encryptedVote = await publicKey.encrypt(BigInt(selectedRange));
 
-            const encryptedVote = await publicKey.encrypt(voteValue);
+        let hexString = encryptedVote.toString(16);
+        if (hexString.length % 2) {
+          hexString = "0" + hexString; // Ensure even length
+        }
+        const encryptedVoteHex = "0x" + hexString;
 
-            let hexString = encryptedVote.toString(16);
-            if (hexString.length % 2) {
-              hexString = "0" + hexString; // Ensure even length
-            }
-            const encryptedVoteHex = "0x" + hexString;
-
-            return encryptedVoteHex;
-          })
-        );
-
-        const tx = await contract.vote(encryptedVoteVector);
+        const tx = await contract.vote([encryptedVoteHex]);
         const receipt = await tx.wait();
 
         toast({
           title: "Vote Submitted",
           description:
-            "Your pizza topping preferences have been recorded! Transaction hash: " +
+            "Your investment performance has been recorded! Transaction hash: " +
             receipt.transactionHash,
         });
         updateVotingResults();
-        setSelectedToppings([]);
+        setSelectedRange(undefined);
         setHasVoted(true);
       } catch (error) {
         console.error("Failed to submit vote:", error);
@@ -271,8 +249,9 @@ export default function PizzaToppingsVoting() {
       setVotingResults(
         data.map((result: any) => ({
           name:
-            pizzaToppings.find((t) => t.id === result.toppingId)?.name ||
-            "Others",
+            positiveValueRange
+              .concat(negativeValueRange)
+              .find((t) => t.id === result.rangeId)?.name || "Other",
           votes: result.votes,
         }))
       );
@@ -292,15 +271,17 @@ export default function PizzaToppingsVoting() {
           --tertiary: #f6f4fa;
           --dark: #212121;
           --white: #fff;
+          --positive: #4caf50;
+          --negative: #f44336;
         }
       `}</style>
       <Card className="max-w-4xl mx-auto bg-[var(--white)] text-[var(--dark)] shadow-lg">
         <CardHeader className="bg-[var(--primary)] text-white rounded-t-lg">
           <CardTitle className="text-3xl font-bold">
-            What Are Your Favorite Pizza Toppings?
+            Investment Cycle Performance
           </CardTitle>
           <CardDescription className="text-[var(--secondary)]">
-            Select all that make your mouth water!
+            How much money have you made/lost in this cycle?
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 mt-4">
@@ -350,28 +331,57 @@ export default function PizzaToppingsVoting() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {pizzaToppings.map((topping) => (
-              <div
-                key={topping.id}
-                className={`flex items-center justify-center p-4 rounded-md border-2 cursor-pointer transition-all duration-200 hover:bg-[var(--secondary)] ${
-                  selectedToppings.includes(topping.id)
-                    ? "border-[var(--primary)]"
-                    : "border-[var(--secondary)]"
-                }`}
-                onClick={() => handleToppingToggle(topping.id)}
-              >
-                <Label className="cursor-pointer text-center">
-                  {topping.name}
-                </Label>
+          <RadioGroup onValueChange={setSelectedRange} className="space-y-6">
+            <div className="space-y-4">
+              <Label className="text-lg font-semibold text-[var(--positive)]">
+                Positive Range
+              </Label>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                {positiveValueRange.map((range) => (
+                  <div key={range.id}>
+                    <RadioGroupItem
+                      value={range.id.toString()}
+                      id={`range-${range.id}`}
+                      className="peer sr-only"
+                    />
+                    <Label
+                      htmlFor={`range-${range.id}`}
+                      className="flex items-center justify-center rounded-md border-2 border-[var(--secondary)] bg-[var(--white)] p-4 hover:bg-[var(--secondary)] peer-data-[state=checked]:border-[var(--positive)] [&:has([data-state=checked])]:border-[var(--positive)]"
+                    >
+                      {range.name}
+                    </Label>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+            <div className="space-y-4">
+              <Label className="text-lg font-semibold text-[var(--negative)]">
+                Negative Range
+              </Label>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                {negativeValueRange.map((range) => (
+                  <div key={range.id}>
+                    <RadioGroupItem
+                      value={range.id.toString()}
+                      id={`range-${range.id}`}
+                      className="peer sr-only"
+                    />
+                    <Label
+                      htmlFor={`range-${range.id}`}
+                      className="flex items-center justify-center rounded-md border-2 border-[var(--secondary)] bg-[var(--white)] p-4 hover:bg-[var(--secondary)] peer-data-[state=checked]:border-[var(--negative)] [&:has([data-state=checked])]:border-[var(--negative)]"
+                    >
+                      {range.name}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </RadioGroup>
 
           <Button
             disabled={
               currentChainId !== SHIELD_TESTNET_CHAIN_ID ||
-              selectedToppings.length === 0 ||
+              !selectedRange ||
               hasVoted ||
               loading
             }
@@ -392,9 +402,7 @@ export default function PizzaToppingsVoting() {
           )}
 
           <div className="space-y-4">
-            <Label className="text-lg font-semibold">
-              Current Pizza Topping Rankings
-            </Label>
+            <Label className="text-lg font-semibold">Voting Results</Label>
             <ResponsiveContainer width="100%" height={400}>
               <BarChart
                 data={votingResults

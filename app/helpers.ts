@@ -1,28 +1,23 @@
 import { PublicKey } from "paillier-bigint";
 
-export const pizzaToppings = [
-  { id: 0, name: "Pepperoni" },
-  { id: 1, name: "Italian sausage" },
-  { id: 2, name: "Mushrooms" },
-  { id: 3, name: "Green peppers" },
-  { id: 4, name: "Onions" },
-  { id: 5, name: "Black olives" },
-  { id: 6, name: "Spinach" },
-  { id: 7, name: "Tomatoes" },
-  { id: 8, name: "Artichoke hearts" },
-  { id: 9, name: "Jalapeños" },
-  { id: 10, name: "Eggplant" },
-  { id: 11, name: "Broccoli" },
-  { id: 12, name: "Sun-dried tomatoes" },
-  { id: 13, name: "Pineapple" },
-  { id: 14, name: "Buffalo chicken" },
-  { id: 15, name: "BBQ sauce" },
-  { id: 16, name: "Goat cheese" },
-  { id: 17, name: "Fresh basil" },
-  { id: 18, name: "Caramelized onions" },
-  { id: 19, name: "Roasted red peppers" },
-  { id: 20, name: "Feta cheese" },
-  { id: 21, name: "Ricotta" },
+export const positiveValueRange = [
+  { id: 0, name: "100,000+" },
+  { id: 1, name: "75,000 - 100,000" },
+  { id: 2, name: "25,000 - 75,000" },
+  { id: 3, name: "10,000 - 25,000" },
+  { id: 4, name: "5,000 - 10,000" },
+  { id: 5, name: "1,000 - 5,000" },
+  { id: 6, name: "0 - 1,000" },
+];
+
+export const negativeValueRange = [
+  { id: 7, name: "0 - 1,000" },
+  { id: 8, name: "1,000 - 5,000" },
+  { id: 9, name: "5,000 - 10,000" },
+  { id: 10, name: "10,000 - 25,000" },
+  { id: 11, name: "25,000 - 75,000" },
+  { id: 12, name: "75,000 - 100,000" },
+  { id: 13, name: "100,000+" },
 ];
 
 export const contractABI = [

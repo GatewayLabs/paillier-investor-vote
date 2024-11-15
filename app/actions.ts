@@ -2,7 +2,7 @@
 
 import { ethers } from "ethers";
 import { PrivateKey, PublicKey } from "paillier-bigint";
-import { contractABI, pizzaToppings } from "./helpers";
+import { contractABI, negativeValueRange, positiveValueRange } from "./helpers";
 
 export async function decryptVotes() {
   // Load public key components
@@ -28,7 +28,7 @@ export async function decryptVotes() {
 
   // Fetch encrypted vote sums
   const encryptedVoteSums = await Promise.all(
-    pizzaToppings.map(async (topping, index) => {
+    positiveValueRange.concat(negativeValueRange).map(async (range, index) => {
       const encryptedVoteStruct = await contract.encryptedVoteSums(index);
       let encryptedValueHex;
 
@@ -51,7 +51,7 @@ export async function decryptVotes() {
       const encryptedValueBigInt = BigInt(encryptedValueHex);
 
       return {
-        toppingId: topping.id,
+        rangeId: range.id,
         encryptedValue: encryptedValueBigInt,
       };
     })
@@ -61,7 +61,7 @@ export async function decryptVotes() {
   const decryptedVotes = encryptedVoteSums.map((vote) => {
     const decryptedValue = privateKey.decrypt(vote.encryptedValue);
     return {
-      toppingId: vote.toppingId,
+      rangeId: vote.rangeId,
       votes: decryptedValue.toString(),
     };
   });
