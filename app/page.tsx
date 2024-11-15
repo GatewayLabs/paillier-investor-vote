@@ -235,11 +235,13 @@ export default function PizzaToppingsVoting() {
         );
 
         const tx = await contract.vote(encryptedVoteVector);
-        await tx.wait();
+        const receipt = await tx.wait();
 
         toast({
           title: "Vote Submitted",
-          description: "Your pizza topping preferences have been recorded!",
+          description:
+            "Your pizza topping preferences have been recorded! Transaction hash: " +
+            receipt.transactionHash,
         });
         updateVotingResults();
         setSelectedToppings([]);
