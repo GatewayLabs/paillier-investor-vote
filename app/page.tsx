@@ -9,6 +9,7 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  ReferenceLine,
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,11 +48,7 @@ export default function Voting() {
       name: string;
       votes?: string;
     }[]
-  >(() =>
-    positiveValueRange
-      .concat(negativeValueRange)
-      .map((range) => ({ name: range.name, votes: undefined }))
-  );
+  >();
   const [contract, setContract] = useState<ethers.Contract>();
   const [currentChainId, setCurrentChainId] = useState<string>();
   const [loading, setLoading] = useState(false);
@@ -59,6 +56,7 @@ export default function Voting() {
 
   useEffect(() => {
     connectWallet();
+    initializeVotingResults();
 
     if (window.ethereum) {
       window.ethereum.on("accountsChanged", connectWallet);
@@ -204,15 +202,20 @@ export default function Voting() {
 
     if (contract && selectedRange) {
       try {
-        const encryptedVote = await publicKey.encrypt(BigInt(selectedRange));
+        const encryptedVoteVector = positiveValueRange
+          .concat(negativeValueRange)
+          .map((range, i) => {
+            const voteValue =
+              i === parseInt(selectedRange) ? BigInt(1) : BigInt(0);
+            const encryptedVote = publicKey.encrypt(voteValue);
+            let hexString = encryptedVote.toString(16);
+            if (hexString.length % 2) {
+              hexString = "0" + hexString; // Ensure even length
+            }
+            return "0x" + hexString;
+          });
 
-        let hexString = encryptedVote.toString(16);
-        if (hexString.length % 2) {
-          hexString = "0" + hexString; // Ensure even length
-        }
-        const encryptedVoteHex = "0x" + hexString;
-
-        const tx = await contract.vote([encryptedVoteHex]);
+        const tx = await contract.vote(encryptedVoteVector);
         const receipt = await tx.wait();
 
         toast({
@@ -243,21 +246,70 @@ export default function Voting() {
     setLoading(false);
   };
 
+  const initializeVotingResults = () => {
+    const initialResults = [...positiveValueRange, ...negativeValueRange].map(
+      (range) => ({
+        name: range.displayName,
+        positive: 0,
+        negative: 0,
+        votes: "0",
+      })
+    );
+    setVotingResults(initialResults);
+  };
+
   const updateVotingResults = async () => {
     try {
-      const data = await decryptVotes();
-      setVotingResults(
-        data.map((result: any) => ({
-          name:
-            positiveValueRange
-              .concat(negativeValueRange)
-              .find((t) => t.id === result.rangeId)?.name || "Other",
-          votes: result.votes,
-        }))
+      const decryptedVotes = await decryptVotes();
+      const updatedResults = [...positiveValueRange, ...negativeValueRange].map(
+        (range) => {
+          const voteData = decryptedVotes.find(
+            (vote: { rangeId: number }) => vote.rangeId === range.id
+          ) || { votes: "0" };
+          const votes = parseInt(voteData.votes);
+          return {
+            name: range.displayName,
+            positive: range.id < 7 ? votes : 0,
+            negative: range.id >= 7 ? votes : 0,
+            votes: voteData.votes,
+          };
+        }
       );
+      setVotingResults(updatedResults);
     } catch (error) {
-      console.error("Failed to get voting results:", error);
+      console.error("Failed to update voting results:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch voting results. Please try again.",
+        variant: "destructive",
+      });
     }
+  };
+
+  const CustomTooltip = ({
+    active,
+    payload,
+    label,
+  }: {
+    active?: boolean;
+    payload?: any[];
+    label?: string;
+  }) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-white p-4 rounded shadow">
+          <p className="font-bold">{label}</p>
+          {data.positive > 0 && (
+            <p className="text-[var(--positive)]">Gains: {data.positive}</p>
+          )}
+          {data.negative > 0 && (
+            <p className="text-[var(--negative)]">Losses: {data.negative}</p>
+          )}
+        </div>
+      );
+    }
+    return null;
   };
 
   return (
@@ -405,24 +457,24 @@ export default function Voting() {
             <Label className="text-lg font-semibold">Voting Results</Label>
             <ResponsiveContainer width="100%" height={400}>
               <BarChart
-                data={votingResults
-                  .sort(
-                    (a, b) =>
-                      Number(BigInt(b.votes || "0")) -
-                      Number(BigInt(a.votes || "0"))
-                  )
-                  .slice(0, 10)}
+                data={votingResults}
+                layout="vertical"
+                margin={{ top: 20, right: 30, left: 100, bottom: 5 }}
               >
-                <XAxis
-                  dataKey="name"
-                  angle={-45}
-                  textAnchor="end"
-                  interval={0}
-                  height={100}
+                <XAxis type="number" />
+                <YAxis type="category" dataKey="name" width={100} />
+                <Tooltip content={<CustomTooltip />} />
+                <ReferenceLine x={0} stroke="#000" />
+                <Bar
+                  dataKey="negative"
+                  fill="var(--negative)"
+                  stackId="stack"
                 />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="votes" fill="var(--primary)" />
+                <Bar
+                  dataKey="positive"
+                  fill="var(--positive)"
+                  stackId="stack"
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
