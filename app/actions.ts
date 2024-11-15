@@ -26,45 +26,52 @@ export async function decryptVotes() {
     provider
   );
 
-  // Fetch encrypted vote sums
-  const encryptedVoteSums = await Promise.all(
-    positiveValueRange.concat(negativeValueRange).map(async (range, index) => {
-      const encryptedVoteStruct = await contract.encryptedVoteSums(index);
-      let encryptedValueHex;
+  // Fetch the total number of ranges from the contract
+  const totalRanges = Number(await contract.totalRanges());
 
-      if (typeof encryptedVoteStruct === "string") {
-        // If the contract returns a bytes value directly
-        encryptedValueHex = encryptedVoteStruct;
-      } else if (encryptedVoteStruct && encryptedVoteStruct.value) {
-        // If the contract returns a struct with a 'value' field
-        encryptedValueHex = encryptedVoteStruct.value;
-      } else {
-        console.log(`No encrypted vote sum for topping index ${index}`);
-        encryptedValueHex = "0x0";
-      }
+  // Fetch encrypted tallies
+  const encryptedTallies = await contract.getEncryptedTallies();
 
-      if (!encryptedValueHex || encryptedValueHex === "0x") {
+  // Ensure we have the correct number of encrypted tallies
+  if (encryptedTallies.length !== totalRanges) {
+    console.error(
+      `Unexpected number of encrypted tallies: expected ${totalRanges}, got ${encryptedTallies.length}`
+    );
+    throw new Error("Mismatch in total ranges and encrypted tallies length");
+  }
+
+  // Combine positive and negative ranges
+  const ranges = positiveValueRange.concat(negativeValueRange);
+
+  // Decrypt aggregated votes
+  const decryptedVotes = encryptedTallies.map(
+    (encryptedValueHex: any, index: number) => {
+      let encryptedValue = encryptedValueHex;
+
+      if (
+        !encryptedValue ||
+        encryptedValue === "0x" ||
+        encryptedValue === "0x0"
+      ) {
         console.log(`No encrypted value at index ${index}, setting to zero`);
-        encryptedValueHex = "0x0";
+        encryptedValue = "0x0";
       }
 
-      const encryptedValueBigInt = BigInt(encryptedValueHex);
+      // Convert encrypted value to BigInt
+      const encryptedValueBigInt = BigInt(encryptedValue);
+
+      // Decrypt the encrypted tally
+      const decryptedValue = privateKey.decrypt(encryptedValueBigInt);
+
+      // Map the decrypted value to the corresponding range
+      const range = ranges[index];
 
       return {
         rangeId: range.id,
-        encryptedValue: encryptedValueBigInt,
+        votes: decryptedValue.toString(),
       };
-    })
+    }
   );
-
-  // Decrypt aggregated votes
-  const decryptedVotes = encryptedVoteSums.map((vote) => {
-    const decryptedValue = privateKey.decrypt(vote.encryptedValue);
-    return {
-      rangeId: vote.rangeId,
-      votes: decryptedValue.toString(),
-    };
-  });
 
   return decryptedVotes;
 }
