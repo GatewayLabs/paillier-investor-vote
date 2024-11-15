@@ -52,6 +52,7 @@ export default function Voting() {
   const [contract, setContract] = useState<ethers.Contract>();
   const [currentChainId, setCurrentChainId] = useState<string>();
   const [loading, setLoading] = useState(false);
+  const [transactionHash, setTransactionHash] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -103,6 +104,7 @@ export default function Voting() {
 
         updateVotingResults();
         checkIfVoted(contractInstance, address);
+        setTransactionHash("");
       } catch (error) {
         console.error("Failed to connect wallet:", error);
         toast({
@@ -216,13 +218,13 @@ export default function Voting() {
           });
 
         const tx = await contract.vote(encryptedVoteVector);
-        const receipt = await tx.wait();
+        await tx.wait();
 
+        setTransactionHash(tx.hash);
         toast({
           title: "Vote Submitted",
           description:
-            "Your investment performance has been recorded! Transaction hash: " +
-            receipt.transactionHash,
+            "Your investment performance has been recorded successfully!",
         });
         updateVotingResults();
         setSelectedRange(undefined);
@@ -442,6 +444,24 @@ export default function Voting() {
           >
             {loading ? "Submitting Vote..." : "Submit Vote"}
           </Button>
+
+          {transactionHash && (
+            <>
+              <Label className="text-sm text-[var(--text)] opacity-70">
+                Transaction submitted:
+              </Label>
+              <a
+                href={`https://gateway-shield-testnet.explorer.caldera.xyz/tx/${transactionHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[var(--primary)] hover:text-[var(--secondary)] underline break-all text-sm"
+              >
+                {transactionHash}
+              </a>
+              <br />
+            </>
+          )}
+
           {currentChainId !== SHIELD_TESTNET_CHAIN_ID && (
             <Label className="text-sm text-[var(--text)] opacity-70">
               Please connect to Shield Testnet to proceed
