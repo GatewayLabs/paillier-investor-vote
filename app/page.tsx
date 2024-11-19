@@ -282,193 +282,208 @@ export default function Voting() {
 
   return (
     <div
-      className={`min-h-screen bg-[var(--tertiary)] text-[var(--dark)] p-8 ${plusJakartaSans.className}`}
+      className={`min-h-screen bg-[#0D0D14] text-white ${plusJakartaSans.className}`}
     >
-      <style jsx global>{`
-        :root {
-          --primary: #771ac9;
-          --secondary: #e6d5fa;
-          --tertiary: #f6f4fa;
-          --dark: #212121;
-          --white: #fff;
-        }
-      `}</style>
+      {/* Navbar */}
+      <nav className="border-b border-gray-800">
+        <div className="max-w-screen-2xl mx-auto px-6 py-6 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <img src="/logo.svg" alt="Logo" className="w-32" />
+          </div>
+        </div>
+      </nav>
 
-      <div className="max-w-4xl mx-auto space-y-8">
-        <div className="text-center space-y-4 py-12">
-          <h1 className="text-4xl font-bold">Secret Ballot</h1>
-          <p className="text-xl text-gray-600">
-            <span className="font-bold">How it works:</span> Gateway ensures
-            true ballot secrecy by encrypting your vote directly on-chain. Your
-            vote remains encrypted - even to validators - while still being
-            fully usable by smart contracts. This gives the full power of
-            blockchain composability while enabling selective disclosure.
-          </p>
+      {/* Main Content */}
+      <div className="max-w-screen-2xl mx-auto px-6 py-12 flex">
+        {/* Left Section - 70% */}
+        <div className="lg:w-[70%] md:w-full lg:pr-12">
+          <div className="space-y-8">
+            <div>
+              <h1 className="text-4xl font-bold mb-2">Confidential Voting</h1>
+              <p className="text-gray-400">How it works:</p>
+            </div>
+
+            <Accordion type="single" collapsible className="space-y-4">
+              <AccordionItem
+                value="step-1"
+                className="bg-[#1A1A24] rounded-lg border border-gray-800"
+              >
+                <AccordionTrigger className="px-6 text-xl">
+                  Step 1: Get tokens for Gateway Shield Testnet
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pb-4">
+                  <div className="space-y-4">
+                    <p className="text-gray-400">
+                      To participate in voting, you'll need some tokens from the
+                      Gateway Shield Testnet faucet.
+                    </p>
+                    <Button asChild variant="secondary">
+                      <a
+                        href="https://faucet.caldera.xyz/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2"
+                      >
+                        Visit Faucet <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem
+                value="step-2"
+                className="bg-[#1A1A24] rounded-lg border border-gray-800"
+              >
+                <AccordionTrigger className="px-6 text-xl">
+                  Step 2: Connect Your Wallet
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pb-4">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-sm text-gray-400">
+                          Connected Account
+                        </p>
+                        <p className="font-mono">
+                          {account || "Not connected"}
+                        </p>
+                      </div>
+                      <Button onClick={connectWallet} variant="secondary">
+                        {account ? "Switch Wallet" : "Connect Wallet"}
+                      </Button>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem
+                value="step-3"
+                className="bg-[#1A1A24] rounded-lg border border-gray-800"
+              >
+                <AccordionTrigger className="px-6 text-xl">
+                  Step 3: Cast a confidential vote
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pb-4">
+                  <div className="space-y-4">
+                    <Label className="text-lg">
+                      Which investment fund do you prefer the most?
+                    </Label>
+                    <ScrollArea className="h-[400px] rounded-md border border-gray-800 p-4">
+                      <RadioGroup
+                        onValueChange={setSelectedFund}
+                        className="grid grid-cols-2 gap-4 md:grid-cols-3"
+                      >
+                        {investmentFunds.map((fund) => (
+                          <div key={fund}>
+                            <RadioGroupItem
+                              value={fund}
+                              id={`fund-${fund}`}
+                              className="peer sr-only"
+                            />
+                            <Label
+                              htmlFor={`fund-${fund}`}
+                              className="flex items-center justify-center rounded-md border-2 border-gray-800 bg-[#1A1A24] p-4 hover:bg-[#252533] peer-data-[state=checked]:border-purple-500 [&:has([data-state=checked])]:border-purple-500"
+                            >
+                              {fund}
+                            </Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    </ScrollArea>
+                    <Button
+                      onClick={submitVote}
+                      disabled={!selectedFund || !account}
+                      variant="secondary"
+                      className="w-full"
+                    >
+                      Cast Vote
+                    </Button>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem
+                value="step-4"
+                className="bg-[#1A1A24] rounded-lg border border-gray-800"
+              >
+                <AccordionTrigger className="px-6 text-xl">
+                  Step 4: Check the results!
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pb-4">
+                  <div className="space-y-4">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-gray-800">
+                          <TableHead className="w-[50px] text-gray-400">
+                            Rank
+                          </TableHead>
+                          <TableHead className="text-gray-400">Fund</TableHead>
+                          <TableHead className="text-right text-gray-400">
+                            Votes
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {votingResults.map((result, index) => (
+                          <TableRow key={result.id} className="border-gray-800">
+                            <TableCell className="font-medium">
+                              {index + 1}
+                            </TableCell>
+                            <TableCell>{result.name}</TableCell>
+                            <TableCell className="text-right">
+                              {result.votes}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
         </div>
 
-        <Accordion type="single" collapsible className="space-y-4">
-          <AccordionItem
-            value="step-1"
-            className="bg-white rounded-lg border shadow-sm"
-          >
-            <AccordionTrigger className="px-6 text-xl">
-              Step 1: Get tokens for Gateway Shield Testnet
-            </AccordionTrigger>
-            <AccordionContent className="px-6 pb-4">
-              <div className="space-y-4">
-                <p className="text-gray-600">
-                  To participate in voting, you'll need some tokens from the
-                  Gateway Shield Testnet faucet.
+        <div>
+          <img
+            src="/image.png"
+            alt="Description"
+            className="absolute inset-0 h-full object-cover w-[60%] left-[40%]"
+            style={{
+              maskImage:
+                "linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0.7) 100%)",
+              WebkitMaskImage:
+                "linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0.7) 100%)",
+            }}
+          />
+        </div>
+
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="mb-4">Congratulations! 🥳</DialogTitle>
+              <DialogDescription className="space-y-4">
+                <p>
+                  You have successfully cast your vote. All of your data is
+                  encrypted!
                 </p>
-                <Button
-                  asChild
-                  className="bg-[var(--primary)] hover:bg-[var(--secondary)] hover:text-[var(--primary)]"
-                >
+                <p>
+                  Check your transaction here:{" "}
                   <a
-                    href="https://faucet.gateway.tech/"
+                    href={`https://gateway-shield-testnet.explorer.caldera.xyz/tx/${transactionHash}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2"
+                    className="text-[var(--primary)] hover:text-[var(--secondary)] underline break-all text-sm inline"
                   >
-                    Visit Faucet <ExternalLink className="h-4 w-4" />
+                    {transactionHash}
                   </a>
-                </Button>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem
-            value="step-2"
-            className="bg-white rounded-lg border shadow-sm"
-          >
-            <AccordionTrigger className="px-6 text-xl">
-              Step 2: Connect Your Wallet
-            </AccordionTrigger>
-            <AccordionContent className="px-6 pb-4">
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm text-gray-400">Connected Account</p>
-                    <p className="font-mono">{account || "Not connected"}</p>
-                  </div>
-                  <Button
-                    onClick={connectWallet}
-                    variant="outline"
-                    className="border-[var(--primary)] text-[var(--primary)] hover:bg-[var(--primary)] hover:text-[var(--white)]"
-                  >
-                    {account ? "Switch Wallet" : "Connect Wallet"}
-                  </Button>
-                </div>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem
-            value="step-3"
-            className="bg-white rounded-lg border shadow-sm"
-          >
-            <AccordionTrigger className="px-6 text-xl">
-              Step 3: Cast a confidential vote
-            </AccordionTrigger>
-            <AccordionContent className="px-6 pb-4">
-              <div className="space-y-4">
-                <Label className="text-lg">
-                  Which investment fund do you prefer the most?
-                </Label>
-                <ScrollArea className="h-[400px] rounded-md border p-4">
-                  <RadioGroup
-                    onValueChange={setSelectedFund}
-                    className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
-                  >
-                    {investmentFunds.map((fund) => (
-                      <div key={fund}>
-                        <RadioGroupItem
-                          value={fund}
-                          id={`fund-${fund}`}
-                          className="peer sr-only"
-                        />
-                        <Label
-                          htmlFor={`fund-${fund}`}
-                          className="flex items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                        >
-                          {fund}
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                </ScrollArea>
-                <Button
-                  onClick={submitVote}
-                  disabled={!selectedFund || !account || hasVoted || loading}
-                  className="w-full bg-[var(--primary)] text-[var(--white)] hover:bg-[var(--secondary)] hover:text-[var(--primary)]"
-                >
-                  {loading ? "Loading..." : "Cast Vote"}
-                </Button>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem
-            value="step-4"
-            className="bg-white rounded-lg border shadow-sm"
-          >
-            <AccordionTrigger className="px-6 text-xl">
-              Step 4: Check the results!
-            </AccordionTrigger>
-            <AccordionContent className="px-6 pb-4">
-              <div className="space-y-4">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px]">Rank</TableHead>
-                      <TableHead>Fund</TableHead>
-                      <TableHead className="text-right">Votes</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {votingResults.map((result, index) => (
-                      <TableRow key={result.id}>
-                        <TableCell className="font-medium">
-                          {index + 1}
-                        </TableCell>
-                        <TableCell>{result.name}</TableCell>
-                        <TableCell className="text-right">
-                          {result.votes}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+                </p>
+              </DialogDescription>
+            </DialogHeader>
+          </DialogContent>
+        </Dialog>
       </div>
-
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle className="mb-4">Congratulations! 🥳</DialogTitle>
-            <DialogDescription className="space-y-4">
-              <p>
-                You have successfully cast your vote. All of your data is
-                encrypted!
-              </p>
-              <p>
-                Check your transaction here:{" "}
-                <a
-                  href={`https://gateway-shield-testnet.explorer.caldera.xyz/tx/${transactionHash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[var(--primary)] hover:text-[var(--secondary)] underline break-all text-sm inline"
-                >
-                  {transactionHash}
-                </a>
-              </p>
-            </DialogDescription>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
