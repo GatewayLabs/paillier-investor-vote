@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 export const metadata: Metadata = {
   title: "Secret Ballot - Powered by Gateway Protocol",
   description:
-    "Test out encrypted state with secret ballot, powered by Gateway Protocol's compute network.",
+    "Test out encrypted state with secret ballot, powered by Gateway.",
 };
 
 const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ["latin"] });
