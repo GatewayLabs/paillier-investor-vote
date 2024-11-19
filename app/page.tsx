@@ -301,11 +301,11 @@ export default function Voting() {
             <div>
               <h1 className="text-4xl font-bold mb-2">Secret Ballot</h1>
               <p className="text-gray-400">
-                <span className="font-bold">How it works:</span>{' '}Gateway ensures true ballot secrecy by encrypting
-                your vote directly on-chain. Your vote remains encrypted - even
-                to validators - while still being fully usable by smart
-                contracts. This gives the full power of blockchain composability
-                while enabling selective disclosure.
+                <span className="font-bold">How it works:</span> Gateway ensures
+                true ballot secrecy by encrypting your vote directly on-chain.
+                Your vote remains encrypted - even to validators - while still
+                being fully usable by smart contracts. This gives the full power
+                of blockchain composability while enabling selective disclosure.
               </p>
             </div>
 
@@ -355,8 +355,11 @@ export default function Voting() {
                           {account || "Not connected"}
                         </p>
                       </div>
-                      <Button onClick={connectWallet} variant="secondary">
-                        {account ? "Switch Wallet" : "Connect Wallet"}
+                      <Button
+                        onClick={account ? disconnectWallet : connectWallet}
+                        variant="secondary"
+                      >
+                        {account ? "Disconnect Wallet" : "Connect Wallet"}
                       </Button>
                     </div>
                   </div>
