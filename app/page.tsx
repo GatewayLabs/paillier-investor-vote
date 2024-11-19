@@ -299,7 +299,7 @@ export default function Voting() {
         <div className="w-full lg:w-[70%] lg:pr-12 relative z-10">
           <div className="space-y-8">
             <div>
-              <h1 className="text-4xl font-bold mb-2">Confidential Voting</h1>
+              <h1 className="text-4xl font-bold mb-2">Secret Ballot</h1>
               <p className="text-gray-400">How it works:</p>
             </div>
 
