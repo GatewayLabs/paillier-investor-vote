@@ -294,9 +294,9 @@ export default function Voting() {
       </nav>
 
       {/* Main Content */}
-      <div className="max-w-screen-2xl mx-auto px-6 py-12 flex">
+      <div className="max-w-screen-2xl mx-auto px-6 py-12 flex h-full">
         {/* Left Section - 70% */}
-        <div className="lg:w-[70%] md:w-full lg:pr-12">
+        <div className="lg:w-[70%] md:w-full lg:pr-12 relative z-10">
           <div className="space-y-8">
             <div>
               <h1 className="text-4xl font-bold mb-2">Confidential Voting</h1>
@@ -445,7 +445,7 @@ export default function Voting() {
           </div>
         </div>
 
-        <div>
+        <div className="lg:w-[30%] md:w-full">
           <img
             src="/image.png"
             alt="Description"
