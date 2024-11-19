@@ -2,7 +2,7 @@
 
 import { ethers } from "ethers";
 import { PrivateKey, PublicKey } from "paillier-bigint";
-import { contractABI, negativeValueRange, positiveValueRange } from "./helpers";
+import { contractABI, investmentFunds } from "./helpers";
 
 export async function decryptVotes() {
   // Load public key components
@@ -40,9 +40,6 @@ export async function decryptVotes() {
     throw new Error("Mismatch in total ranges and encrypted tallies length");
   }
 
-  // Combine positive and negative ranges
-  const ranges = positiveValueRange.concat(negativeValueRange);
-
   // Decrypt aggregated votes
   const decryptedVotes = encryptedTallies.map(
     (encryptedValueHex: any, index: number) => {
@@ -63,13 +60,7 @@ export async function decryptVotes() {
       // Decrypt the encrypted tally
       const decryptedValue = privateKey.decrypt(encryptedValueBigInt);
 
-      // Map the decrypted value to the corresponding range
-      const range = ranges[index];
-
-      return {
-        rangeId: range.id,
-        votes: decryptedValue.toString(),
-      };
+      return decryptedValue.toString();
     }
   );
 

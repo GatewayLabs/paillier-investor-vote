@@ -16,8 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import Link from "next/link";
 import {
-  positiveValueRange,
-  negativeValueRange,
+  investmentFunds,
   contractABI,
   SHIELD_TESTNET_CHAIN_ID,
   contractAddress,
@@ -41,6 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
@@ -48,15 +48,14 @@ export default function Voting() {
   const [account, setAccount] = useState("");
   const [balance, setBalance] = useState("0");
   const [hasVoted, setHasVoted] = useState(false);
-  const [selectedRange, setSelectedRange] = useState<string>();
   const [votingResults, setVotingResults] = useState<
     {
       id: number;
       name: string;
       votes: number | undefined;
-      isPositive: boolean;
     }[]
   >([]);
+  const [selectedFund, setSelectedFund] = useState<string>();
   const [contract, setContract] = useState<ethers.Contract>();
   const [currentChainId, setCurrentChainId] = useState<string>();
   const [loading, setLoading] = useState(false);
@@ -206,20 +205,18 @@ export default function Voting() {
   const submitVote = async () => {
     setLoading(true);
 
-    if (contract && selectedRange) {
+    if (contract && selectedFund) {
       try {
-        const encryptedVoteVector = positiveValueRange
-          .concat(negativeValueRange)
-          .map((range, i) => {
-            const voteValue =
-              i === parseInt(selectedRange) ? BigInt(1) : BigInt(0);
-            const encryptedVote = publicKey.encrypt(voteValue);
-            let hexString = encryptedVote.toString(16);
-            if (hexString.length % 2) {
-              hexString = "0" + hexString; // Ensure even length
-            }
-            return "0x" + hexString;
-          });
+        const encryptedVoteVector = investmentFunds.map((range, i) => {
+          const voteValue =
+            i === parseInt(selectedFund) ? BigInt(1) : BigInt(0);
+          const encryptedVote = publicKey.encrypt(voteValue);
+          let hexString = encryptedVote.toString(16);
+          if (hexString.length % 2) {
+            hexString = "0" + hexString; // Ensure even length
+          }
+          return "0x" + hexString;
+        });
 
         const tx = await contract.vote(encryptedVoteVector);
         await tx.wait();
@@ -227,7 +224,7 @@ export default function Voting() {
         setTransactionHash(tx.hash);
         setIsModalOpen(true);
         updateVotingResults();
-        setSelectedRange(undefined);
+        setSelectedFund(undefined);
         setHasVoted(true);
       } catch (error) {
         console.error("Failed to submit vote:", error);
@@ -249,34 +246,22 @@ export default function Voting() {
   };
 
   const initializeVotingResults = () => {
-    const initialResults = [...positiveValueRange, ...negativeValueRange].map(
-      (range) => ({
-        id: range.id,
-        name: range.displayName,
-        votes: 0,
-        isPositive: range.id < 7,
-      })
-    );
+    const initialResults = investmentFunds.map((fund, index) => ({
+      id: index,
+      name: fund,
+      votes: 0,
+    }));
     setVotingResults(initialResults);
   };
 
   const updateVotingResults = async () => {
     try {
-      const decryptedVotes = await decryptVotes();
-      const updatedResults = [...positiveValueRange, ...negativeValueRange].map(
-        (range) => {
-          const voteData = decryptedVotes.find(
-            (vote: { rangeId: number; votes: string }) =>
-              vote.rangeId === range.id
-          ) || { votes: "0" };
-          return {
-            id: range.id,
-            name: range.displayName,
-            votes: parseInt(voteData.votes),
-            isPositive: range.id < 7,
-          };
-        }
-      );
+      const votes = await decryptVotes();
+      const updatedResults = investmentFunds.map((fund, index) => ({
+        id: index,
+        name: fund,
+        votes: votes[index].toNumber(),
+      }));
       setVotingResults(updatedResults.sort((a, b) => b.votes - a.votes));
     } catch (error) {
       console.error("Failed to update voting results:", error);
@@ -286,32 +271,6 @@ export default function Voting() {
         variant: "destructive",
       });
     }
-  };
-
-  const CustomTooltip = ({
-    active,
-    payload,
-    label,
-  }: {
-    active?: boolean;
-    payload?: any[];
-    label?: string;
-  }) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-white p-4 rounded shadow">
-          <p className="font-bold">{label}</p>
-          {data.positive > 0 && (
-            <p className="text-[var(--positive)]">Gains: {data.positive}</p>
-          )}
-          {data.negative > 0 && (
-            <p className="text-[var(--negative)]">Losses: {data.negative}</p>
-          )}
-        </div>
-      );
-    }
-    return null;
   };
 
   return (
@@ -330,12 +289,12 @@ export default function Voting() {
         }
       `}</style>
       <Card className="max-w-4xl mx-auto bg-[var(--white)] text-[var(--dark)] shadow-lg">
-        <CardHeader className="bg-[var(--primary)] text-white rounded-t-lg">
+        <CardHeader>
           <CardTitle className="text-3xl font-bold">
-            Investment Cycle Performance
+            Favorite Investment Fund
           </CardTitle>
-          <CardDescription className="text-[var(--secondary)]">
-            How much money have you made/lost in this cycle?
+          <CardDescription>
+            Which investment fund do you prefer the most?
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 mt-4">
@@ -385,57 +344,33 @@ export default function Voting() {
             </div>
           </div>
 
-          <RadioGroup onValueChange={setSelectedRange} className="space-y-6">
-            <div className="space-y-4">
-              <Label className="text-lg font-semibold text-[var(--positive)]">
-                Positive Range
-              </Label>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                {positiveValueRange.map((range) => (
-                  <div key={range.id}>
-                    <RadioGroupItem
-                      value={range.id.toString()}
-                      id={`range-${range.id}`}
-                      className="peer sr-only"
-                    />
-                    <Label
-                      htmlFor={`range-${range.id}`}
-                      className="flex items-center justify-center rounded-md border-2 border-[var(--secondary)] bg-[var(--white)] p-4 hover:bg-[var(--secondary)] peer-data-[state=checked]:border-[var(--positive)] [&:has([data-state=checked])]:border-[var(--positive)]"
-                    >
-                      {range.name}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-4">
-              <Label className="text-lg font-semibold text-[var(--negative)]">
-                Negative Range
-              </Label>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                {negativeValueRange.map((range) => (
-                  <div key={range.id}>
-                    <RadioGroupItem
-                      value={range.id.toString()}
-                      id={`range-${range.id}`}
-                      className="peer sr-only"
-                    />
-                    <Label
-                      htmlFor={`range-${range.id}`}
-                      className="flex items-center justify-center rounded-md border-2 border-[var(--secondary)] bg-[var(--white)] p-4 hover:bg-[var(--secondary)] peer-data-[state=checked]:border-[var(--negative)] [&:has([data-state=checked])]:border-[var(--negative)]"
-                    >
-                      {range.name}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </RadioGroup>
+          <ScrollArea className="h-[400px] rounded-md border p-4">
+            <RadioGroup
+              onValueChange={setSelectedFund}
+              className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
+            >
+              {investmentFunds.map((fund) => (
+                <div key={fund}>
+                  <RadioGroupItem
+                    value={fund}
+                    id={`fund-${fund}`}
+                    className="peer sr-only"
+                  />
+                  <Label
+                    htmlFor={`fund-${fund}`}
+                    className="flex items-center justify-center rounded-md border-2 border-[var(--secondary)] bg-[var(--white)] p-4 hover:bg-[var(--secondary)] peer-data-[state=checked]:border-[var(--primary)] [&:has([data-state=checked])]:border-[var(--primary)]"
+                  >
+                    {fund}
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
+          </ScrollArea>
 
           <Button
             disabled={
               currentChainId !== SHIELD_TESTNET_CHAIN_ID ||
-              !selectedRange ||
+              !selectedFund ||
               hasVoted ||
               loading
             }
@@ -464,7 +399,7 @@ export default function Voting() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[50px]">Rank</TableHead>
-                  <TableHead>Range</TableHead>
+                  <TableHead>Fund</TableHead>
                   <TableHead className="text-right">Votes</TableHead>
                 </TableRow>
               </TableHeader>
@@ -472,15 +407,7 @@ export default function Voting() {
                 {votingResults.map((result, index) => (
                   <TableRow key={result.id}>
                     <TableCell className="font-medium">{index + 1}</TableCell>
-                    <TableCell
-                      className={
-                        result.isPositive
-                          ? "text-[var(--positive)]"
-                          : "text-[var(--negative)]"
-                      }
-                    >
-                      {result.name}
-                    </TableCell>
+                    <TableCell>{result.name}</TableCell>
                     <TableCell className="text-right">{result.votes}</TableCell>
                   </TableRow>
                 ))}

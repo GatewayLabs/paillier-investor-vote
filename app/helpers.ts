@@ -1,23 +1,38 @@
 import { PublicKey } from "paillier-bigint";
 
-export const positiveValueRange = [
-  { id: 0, name: "100,000+", displayName: "$100,000+" },
-  { id: 1, name: "75,000 - 100,000", displayName: "$75,000 - $100,000" },
-  { id: 2, name: "25,000 - 75,000", displayName: "$25,000 - $75,000" },
-  { id: 3, name: "10,000 - 25,000", displayName: "$10,000 - $25,000" },
-  { id: 4, name: "5,000 - 10,000", displayName: "$5,000 - $10,000" },
-  { id: 5, name: "1,000 - 5,000", displayName: "$1,000 - $5,000" },
-  { id: 6, name: "0 - 1,000", displayName: "$0 - $1,000" },
-];
-
-export const negativeValueRange = [
-  { id: 7, name: "0 - 1,000", displayName: "$0 - $1,000" },
-  { id: 8, name: "1,000 - 5,000", displayName: "$1,000 - $5,000" },
-  { id: 9, name: "5,000 - 10,000", displayName: "$5,000 - $10,000" },
-  { id: 10, name: "10,000 - 25,000", displayName: "$10,000 - $25,000" },
-  { id: 11, name: "25,000 - 75,000", displayName: "$25,000 - $75,000" },
-  { id: 12, name: "75,000 - 100,000", displayName: "$75,000 - $100,000" },
-  { id: 13, name: "100,000+", displayName: "$100,000+" },
+export const investmentFunds = [
+  "Tribe Capital",
+  "Archetype",
+  "Frictionless",
+  "Electric",
+  "Polychain",
+  "Variant",
+  "Brevan Howard",
+  "Bain Cap Crypto",
+  "Dragonfly",
+  "Placeholder",
+  "Pantera",
+  "Haun",
+  "Hack VC",
+  "a16z",
+  "Paradigm",
+  "Founders Fund",
+  "Blockchain Capital",
+  "Binance Labs",
+  "Coinbase Ventures",
+  "Hashkey Capital",
+  "MultiCoin",
+  "Coinfund",
+  "1kx",
+  "DG",
+  "Galaxy",
+  "Delphi Digital",
+  "Sequoia",
+  "ABCDE",
+  "DCG",
+  "Framework",
+  "Union Square Ventures",
+  "Other",
 ];
 
 export const contractABI = [
