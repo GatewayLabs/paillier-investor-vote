@@ -3,18 +3,9 @@
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardFooter,
-} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Plus_Jakarta_Sans } from "next/font/google";
-import Link from "next/link";
 import {
   investmentFunds,
   contractABI,
@@ -71,8 +62,8 @@ export default function Voting() {
   const { toast } = useToast();
 
   useEffect(() => {
+    updateVotingResults();
     connectWallet();
-    initializeVotingResults();
 
     if (window.ethereum) {
       window.ethereum.on("accountsChanged", connectWallet);
@@ -117,7 +108,6 @@ export default function Voting() {
         );
         setContract(contractInstance);
 
-        updateVotingResults();
         checkIfVoted(contractInstance, address);
         setTransactionHash("");
       } catch (error) {
@@ -147,7 +137,7 @@ export default function Voting() {
         setAccount("");
         setBalance("0");
         setContract(undefined);
-        initializeVotingResults();
+        updateVotingResults();
       } catch (error) {
         console.error("Failed to disconnect wallet:", error);
         toast({
@@ -251,15 +241,6 @@ export default function Voting() {
     setLoading(false);
   };
 
-  const initializeVotingResults = () => {
-    const initialResults = investmentFunds.map((fund, index) => ({
-      id: index,
-      name: fund,
-      votes: 0,
-    }));
-    setVotingResults(initialResults);
-  };
-
   const updateVotingResults = async () => {
     try {
       const votes = await decryptVotes();
@@ -348,13 +329,21 @@ export default function Voting() {
                 <AccordionContent className="px-6 pb-4">
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-sm text-gray-400">
-                          Connected Account
-                        </p>
-                        <p className="font-mono">
-                          {account || "Not connected"}
-                        </p>
+                      <div className="flex flex-col space-y-3">
+                        <div>
+                          <p className="text-sm text-gray-400">
+                            Connected Account
+                          </p>
+                          <p className="font-mono">
+                            {account || "Not connected"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-400">Balance</p>
+                          <p className="font-mono">
+                            {parseFloat(balance) > 0 ? balance : "No funds"}
+                          </p>
+                        </div>
                       </div>
                       <div className="flex flex-col space-y-3">
                         <Button
@@ -418,18 +407,14 @@ export default function Voting() {
                         !account ||
                         hasVoted ||
                         loading ||
-                        currentChainId !== SHIELD_TESTNET_CHAIN_ID
+                        currentChainId !== SHIELD_TESTNET_CHAIN_ID ||
+                        parseFloat(balance) <= 0
                       }
                       variant="secondary"
                       className="w-full"
                     >
                       {loading ? "Loading..." : "Cast Vote"}
                     </Button>
-                    {hasVoted && (
-                      <p className="text-sm text-gray-400">
-                        You have already voted. Thank you for participating!
-                      </p>
-                    )}
                     {currentChainId !== SHIELD_TESTNET_CHAIN_ID && (
                       <Button
                         onClick={switchToShieldTestnet}
@@ -438,6 +423,18 @@ export default function Voting() {
                       >
                         Switch to Shield Testnet
                       </Button>
+                    )}
+
+                    {hasVoted && (
+                      <p className="text-sm text-gray-400">
+                        You have already voted. Thank you for participating!
+                      </p>
+                    )}
+                    {parseFloat(balance) <= 0 && (
+                      <p className="text-sm text-gray-400">
+                        You need to have funds to vote. Please use the faucet to
+                        get some tokens.
+                      </p>
                     )}
                   </div>
                 </AccordionContent>
