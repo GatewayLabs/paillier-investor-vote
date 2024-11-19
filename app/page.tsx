@@ -214,9 +214,8 @@ export default function Voting() {
 
     if (contract && selectedFund) {
       try {
-        const encryptedVoteVector = investmentFunds.map((range, i) => {
-          const voteValue =
-            i === parseInt(selectedFund) ? BigInt(1) : BigInt(0);
+        const encryptedVoteVector = investmentFunds.map((fund) => {
+          const voteValue = fund == selectedFund ? BigInt(1) : BigInt(0);
           const encryptedVote = publicKey.encrypt(voteValue);
           let hexString = encryptedVote.toString(16);
           if (hexString.length % 2) {
@@ -355,12 +354,22 @@ export default function Voting() {
                           {account || "Not connected"}
                         </p>
                       </div>
-                      <Button
-                        onClick={account ? disconnectWallet : connectWallet}
-                        variant="secondary"
-                      >
-                        {account ? "Disconnect Wallet" : "Connect Wallet"}
-                      </Button>
+                      <div className="flex flex-col space-y-3">
+                        <Button
+                          onClick={account ? disconnectWallet : connectWallet}
+                          variant="secondary"
+                        >
+                          {account ? "Disconnect Wallet" : "Connect Wallet"}
+                        </Button>
+                        {currentChainId !== SHIELD_TESTNET_CHAIN_ID && (
+                          <Button
+                            onClick={switchToShieldTestnet}
+                            variant="secondary"
+                          >
+                            Switch to Shield Testnet
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </AccordionContent>
@@ -402,12 +411,32 @@ export default function Voting() {
                     </ScrollArea>
                     <Button
                       onClick={submitVote}
-                      disabled={!selectedFund || !account}
+                      disabled={
+                        !selectedFund ||
+                        !account ||
+                        hasVoted ||
+                        loading ||
+                        currentChainId !== SHIELD_TESTNET_CHAIN_ID
+                      }
                       variant="secondary"
                       className="w-full"
                     >
-                      Cast Vote
+                      {loading ? "Loading..." : "Cast Vote"}
                     </Button>
+                    {hasVoted && (
+                      <p className="text-sm text-gray-400">
+                        You have already voted. Thank you for participating!
+                      </p>
+                    )}
+                    {currentChainId !== SHIELD_TESTNET_CHAIN_ID && (
+                      <Button
+                        onClick={switchToShieldTestnet}
+                        variant="secondary"
+                        className="w-full"
+                      >
+                        Switch to Shield Testnet
+                      </Button>
+                    )}
                   </div>
                 </AccordionContent>
               </AccordionItem>
