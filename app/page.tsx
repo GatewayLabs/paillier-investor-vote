@@ -2,15 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
-import {
-  Bar,
-  BarChart,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
-} from "recharts";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -42,6 +33,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
@@ -52,10 +51,12 @@ export default function Voting() {
   const [selectedRange, setSelectedRange] = useState<string>();
   const [votingResults, setVotingResults] = useState<
     {
+      id: number;
       name: string;
-      votes?: string;
+      votes: number | undefined;
+      isPositive: boolean;
     }[]
-  >();
+  >([]);
   const [contract, setContract] = useState<ethers.Contract>();
   const [currentChainId, setCurrentChainId] = useState<string>();
   const [loading, setLoading] = useState(false);
@@ -140,12 +141,7 @@ export default function Voting() {
         setAccount("");
         setBalance("0");
         setContract(undefined);
-        setVotingResults(
-          positiveValueRange.concat(negativeValueRange).map((range) => ({
-            name: range.name,
-            votes: undefined,
-          }))
-        );
+        initializeVotingResults();
       } catch (error) {
         console.error("Failed to disconnect wallet:", error);
         toast({
@@ -255,10 +251,10 @@ export default function Voting() {
   const initializeVotingResults = () => {
     const initialResults = [...positiveValueRange, ...negativeValueRange].map(
       (range) => ({
+        id: range.id,
         name: range.displayName,
-        positive: 0,
-        negative: 0,
-        votes: "0",
+        votes: 0,
+        isPositive: range.id < 7,
       })
     );
     setVotingResults(initialResults);
@@ -270,18 +266,18 @@ export default function Voting() {
       const updatedResults = [...positiveValueRange, ...negativeValueRange].map(
         (range) => {
           const voteData = decryptedVotes.find(
-            (vote: { rangeId: number }) => vote.rangeId === range.id
+            (vote: { rangeId: number; votes: string }) =>
+              vote.rangeId === range.id
           ) || { votes: "0" };
-          const votes = parseInt(voteData.votes);
           return {
+            id: range.id,
             name: range.displayName,
-            positive: range.id < 7 ? votes : 0,
-            negative: range.id >= 7 ? votes : 0,
-            votes: voteData.votes,
+            votes: parseInt(voteData.votes),
+            isPositive: range.id < 7,
           };
         }
       );
-      setVotingResults(updatedResults);
+      setVotingResults(updatedResults.sort((a, b) => b.votes - a.votes));
     } catch (error) {
       console.error("Failed to update voting results:", error);
       toast({
@@ -461,29 +457,35 @@ export default function Voting() {
           )}
 
           <div className="space-y-4">
-            <Label className="text-lg font-semibold">Voting Results</Label>
-            <ResponsiveContainer width="100%" height={400}>
-              <BarChart
-                data={votingResults}
-                layout="vertical"
-                margin={{ top: 20, right: 30, left: 100, bottom: 5 }}
-              >
-                <XAxis type="number" />
-                <YAxis type="category" dataKey="name" width={100} />
-                <Tooltip content={<CustomTooltip />} />
-                <ReferenceLine x={0} stroke="#000" />
-                <Bar
-                  dataKey="negative"
-                  fill="var(--negative)"
-                  stackId="stack"
-                />
-                <Bar
-                  dataKey="positive"
-                  fill="var(--positive)"
-                  stackId="stack"
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            <Label className="text-lg font-semibold">
+              Voting Results Leaderboard
+            </Label>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[50px]">Rank</TableHead>
+                  <TableHead>Range</TableHead>
+                  <TableHead className="text-right">Votes</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {votingResults.map((result, index) => (
+                  <TableRow key={result.id}>
+                    <TableCell className="font-medium">{index + 1}</TableCell>
+                    <TableCell
+                      className={
+                        result.isPositive
+                          ? "text-[var(--positive)]"
+                          : "text-[var(--negative)]"
+                      }
+                    >
+                      {result.name}
+                    </TableCell>
+                    <TableCell className="text-right">{result.votes}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
         <CardFooter className="text-sm text-[var(--text)] opacity-70">
