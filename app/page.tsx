@@ -263,11 +263,13 @@ export default function Voting() {
   const updateVotingResults = async () => {
     try {
       const votes = await decryptVotes();
-      const updatedResults = investmentFunds.map((fund, index) => ({
-        id: index,
-        name: fund,
-        votes: votes[index],
-      }));
+      const updatedResults = investmentFunds
+        .map((fund, index) => ({
+          id: index,
+          name: fund,
+          votes: votes[index],
+        }))
+        .filter((result) => BigInt(result.votes) < BigInt(10000));
       setVotingResults(updatedResults.sort((a, b) => b.votes - a.votes));
     } catch (error) {
       console.error("Failed to update voting results:", error);
