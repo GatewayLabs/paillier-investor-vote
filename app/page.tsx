@@ -300,7 +300,13 @@ export default function Voting() {
           <div className="space-y-8">
             <div>
               <h1 className="text-4xl font-bold mb-2">Secret Ballot</h1>
-              <p className="text-gray-400">How it works:</p>
+              <p className="text-gray-400">
+                <span className="font-bold">How it works:</span>{' '}Gateway ensures true ballot secrecy by encrypting
+                your vote directly on-chain. Your vote remains encrypted - even
+                to validators - while still being fully usable by smart
+                contracts. This gives the full power of blockchain composability
+                while enabling selective disclosure.
+              </p>
             </div>
 
             <Accordion type="single" collapsible className="space-y-4">
