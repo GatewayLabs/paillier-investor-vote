@@ -325,7 +325,7 @@ export default function Voting() {
                     </p>
                     <Button asChild variant="secondary">
                       <a
-                        href="https://faucet.caldera.xyz/"
+                        href="https://faucet.gateway.tech/"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2"
