@@ -35,6 +35,13 @@ import {
 import { decryptVotes } from "./actions";
 import { RadioGroup } from "@/components/ui/radio-group";
 import { RadioGroupItem } from "@radix-ui/react-radio-group";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
@@ -53,6 +60,7 @@ export default function Voting() {
   const [currentChainId, setCurrentChainId] = useState<string>();
   const [loading, setLoading] = useState(false);
   const [transactionHash, setTransactionHash] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -221,11 +229,7 @@ export default function Voting() {
         await tx.wait();
 
         setTransactionHash(tx.hash);
-        toast({
-          title: "Vote Submitted",
-          description:
-            "Your investment performance has been recorded successfully!",
-        });
+        setIsModalOpen(true);
         updateVotingResults();
         setSelectedRange(undefined);
         setHasVoted(true);
@@ -445,23 +449,6 @@ export default function Voting() {
             {loading ? "Submitting Vote..." : "Submit Vote"}
           </Button>
 
-          {transactionHash && (
-            <>
-              <Label className="text-sm text-[var(--text)] opacity-70">
-                Transaction submitted:
-              </Label>
-              <a
-                href={`https://gateway-shield-testnet.explorer.caldera.xyz/tx/${transactionHash}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[var(--primary)] hover:text-[var(--secondary)] underline break-all text-sm"
-              >
-                {transactionHash}
-              </a>
-              <br />
-            </>
-          )}
-
           {currentChainId !== SHIELD_TESTNET_CHAIN_ID && (
             <Label className="text-sm text-[var(--text)] opacity-70">
               Please connect to Shield Testnet to proceed
@@ -503,6 +490,31 @@ export default function Voting() {
           Powered by Gateway Protocol
         </CardFooter>
       </Card>
+
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="mb-4">Congratulations! 🥳</DialogTitle>
+            <DialogDescription className="space-y-4">
+              <p>
+                You have successfully cast your vote. All of your data is
+                encrypted!
+              </p>
+              <p>
+                Check your transaction here:{" "}
+                <a
+                  href={`https://gateway-shield-testnet.explorer.caldera.xyz/tx/${transactionHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[var(--primary)] hover:text-[var(--secondary)] underline break-all text-sm inline"
+                >
+                  {transactionHash}
+                </a>
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
